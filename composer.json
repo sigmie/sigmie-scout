@@ -1,0 +1,65 @@
+{
+    "name": "sigmie/sigmie-scout",
+    "description": "Laravel Scout adapter for Sigmie.",
+    "keywords": [
+        "sigmie",
+        "sigmie-scout",
+        "laravel-scout",
+        "scout",
+        "laravel"
+    ],
+    "homepage": "https://github.com/sigmie/sigmie-scout",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "nicoorfi",
+            "email": "nico@sigmie.com"
+        }
+    ],
+    "require": {
+        "php": "^8.0",
+        "laravel/scout": "^10.9",
+        "sigmie/app-sdk": "dev-main",
+        "spatie/laravel-package-tools": "^1.1"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.23",
+        "phpstan/phpstan": "^1.11",
+        "phpunit/phpunit": "^9.6",
+        "spatie/laravel-ray": "^1.36"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sigmie\\Scout\\": "src",
+            "Sigmie\\Scout\\Database\\Factories\\": "database/factories"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Sigmie\\Scout\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "psalm": "vendor/bin/psalm",
+        "test": "vendor/bin/phpunit --colors=always",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sigmie\\Scout\\SigmieScoutServiceProvider"
+            ],
+            "aliases": {
+                "ElasticsearchScout": "Sigmie\\Scout\\SigmieScoutFacade"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
