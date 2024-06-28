@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Sigmie\Scout;
 
+use Carbon\Carbon;
+use DateTime;
 use Laravel\Scout\Searchable as ScoutSearchable;
 
 trait Searchable
@@ -17,12 +19,43 @@ trait Searchable
         return static::class;
     }
 
+    public function indexName()
+    {
+        return strtolower(class_basename($this->searchableAs()));
+    }
+
+    public function searchableId()
+    {
+        return $this->id;
+    }
+
+    public function sigmieIndex(): array
+    {
+        $mappings = collect($this->sigmieMappings ?? [
+            'created_at' => 'date',
+            'updated_at' => 'date',
+        ])->map(function ($type, $name) {
+            return [
+                'name' => $name,
+                'type' => $type,
+            ];
+        })->values()
+            ->toArray();
+
+        return  [
+            'mappings' => $mappings,
+        ];
+    }
+
     public function toSearchableArray()
     {
         $array = $this->toArray();
 
-        $array['created_at'] = $this->created_at?->format('Y-m-d H:i:s.u');
-        $array['updated_at'] = $this->updated_at?->format('Y-m-d H:i:s.u');
+        foreach ($array as $key => $value) {
+            if ($value instanceof Carbon || $value instanceof DateTime) {
+                $array[$key] = $value->format('Y-m-d\TH:i:s.u\Z');
+            }
+        }
 
         return $array;
     }

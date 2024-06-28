@@ -35,7 +35,7 @@ class SigmieEngine extends Engine
             $builder,
             $ids
         )->map(function ($model) use ($hits) {
-            $hit = $hits[$model->id];
+            $hit = $hits[$model->searchableId()];
 
             $model->hit($hit);
 
@@ -50,9 +50,12 @@ class SigmieEngine extends Engine
     {
         $model = new $model();
 
-        $indexName = config('scout.prefix') . $model->getTable();
+        $indexName = config('scout.prefix') . $model->indexName();
 
-        $response = $this->sigmie->createIndex($indexName);
+        $response = $this->sigmie->createIndex(
+            $indexName,
+            $model->sigmieIndex()
+        );
 
         if ($response->failed()) {
             throw new SigmieAPIException($response->json(), $response->psr()->getStatusCode());
@@ -63,7 +66,7 @@ class SigmieEngine extends Engine
     {
         $model = new $model();
 
-        $indexName = config('scout.prefix') . $model->getTable();
+        $indexName = config('scout.prefix') . $model->indexName();
 
         $response = $this->sigmie->deleteIndex($indexName);
 
@@ -77,13 +80,15 @@ class SigmieEngine extends Engine
 
     public function update($models)
     {
-        $indexName = config('scout.prefix') . $models->first()->getTable();
+        $indexName = config('scout.prefix') . $models->first()->indexName();
 
         $batch = $models->map(fn ($model) => [
             'action' => 'upsert',
-            '_id' => $model->id,
+            '_id' => $model->searchableId(),
             'body' => $model->toSearchableArray(),
-        ])->toArray();
+        ])
+            ->values()
+            ->toArray();
 
         $response = $this->sigmie->batchWrite($indexName, $batch);
 
@@ -94,11 +99,11 @@ class SigmieEngine extends Engine
 
     public function delete($models)
     {
-        $indexName = config('scout.prefix') . $models->first()->getTable();
+        $indexName = config('scout.prefix') . $models->first()->indexName();
 
         $batch = $models->map(fn ($model) => [
             'action' => 'delete',
-            '_id' => $model->id,
+            '_id' => $model->searchableId(),
         ])->toArray();
 
         $response = $this->sigmie->batchWrite($indexName, $batch);
@@ -112,7 +117,7 @@ class SigmieEngine extends Engine
     {
         $model = $builder->model;
 
-        $indexName = config('scout.prefix') . $model->getTable();
+        $indexName = config('scout.prefix') . $model->indexName();
 
         $limit = $builder->limit ? $builder->limit : 10;
 
@@ -121,7 +126,7 @@ class SigmieEngine extends Engine
             'size' => $limit,
         ];
 
-        if (! is_null($builder->callback)) {
+        if (!is_null($builder->callback)) {
             $params = ($builder->callback)($params);
         }
 
@@ -138,7 +143,7 @@ class SigmieEngine extends Engine
     {
         $model = $builder->model;
 
-        $indexName = config('scout.prefix') . $model->getTable();
+        $indexName = config('scout.prefix') . $model->indexName();
 
         $response = $this->sigmie->search($indexName, [
             'query' => $builder->query ?? '',
@@ -170,7 +175,7 @@ class SigmieEngine extends Engine
             $ids
         )
             ->map(function ($model) use ($hits) {
-                $hit = $hits[$model->id];
+                $hit = $hits[$model->searchableId()];
 
                 $model->hit($hit);
 
@@ -189,7 +194,7 @@ class SigmieEngine extends Engine
 
     public function flush($model)
     {
-        $indexName = config('scout.prefix') . $model->getTable();
+        $indexName = config('scout.prefix') . $model->indexName();
 
         $response = $this->sigmie->clearIndex($indexName);
 
