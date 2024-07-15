@@ -145,11 +145,17 @@ class SigmieEngine extends Engine
 
         $indexName = config('scout.prefix') . $model->indexName();
 
-        $response = $this->sigmie->search($indexName, [
+        $params = [
             'query' => $builder->query ?? '',
             'per_page' => $perPage,
             'page' => $page,
-        ]);
+        ];
+
+        if (!is_null($builder->callback)) {
+            $params = ($builder->callback)($params);
+        }
+
+        $response = $this->sigmie->search($indexName, $params);
 
         if ($response->failed()) {
             throw new SigmieAPIException($response->json(), $response->psr()->getStatusCode());
