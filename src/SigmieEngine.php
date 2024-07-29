@@ -31,16 +31,15 @@ class SigmieEngine extends Engine
         $ids = array_map(fn ($hit) => $hit['_id'], $results['hits']);
         $hits = collect($results['hits'])->mapWithKeys(fn ($hit) => [$hit['_id'] => $hit]);
 
-        $models = $model->getScoutModelsByIds(
-            $builder,
-            $ids
-        )->map(function ($model) use ($hits) {
-            $hit = $hits[$model->searchableId()];
+        $models = $model->whereIn('id', $ids)
+            ->get()
+            ->map(function ($model) use ($hits) {
+                $hit = $hits[$model->searchableId()];
 
-            $model->hit($hit);
+                $model->hit($hit);
 
-            return  $model;
-        })->sortByDesc(fn ($model) => (float) $model->hit['_score'])
+                return  $model;
+            })->sortByDesc(fn ($model) => (float) $model->hit['_score'])
             ->values();
 
         return  $models;
@@ -176,10 +175,8 @@ class SigmieEngine extends Engine
         $ids = array_map(fn ($hit) => $hit['_id'], $results['hits']);
         $hits = collect($results['hits'])->mapWithKeys(fn ($hit) => [$hit['_id'] => $hit]);
 
-        $models = $model->getScoutModelsByIds(
-            $builder,
-            $ids
-        )
+        $models = $model->whereIn('id', $ids)
+            ->get()
             ->map(function ($model) use ($hits) {
                 $hit = $hits[$model->searchableId()];
 
