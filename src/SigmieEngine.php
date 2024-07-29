@@ -122,7 +122,7 @@ class SigmieEngine extends Engine
 
         $params = [
             'query' => $builder->query ?? '',
-            'size' => $limit,
+            'per_page' => $limit,
         ];
 
         if (!is_null($builder->callback)) {
