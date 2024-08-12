@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sigmie\Scout;
 
+use Illuminate\Support\LazyCollection;
 use Laravel\Scout\Builder;
 use Laravel\Scout\Engines\Engine;
 use Sigmie\Application\Client;
@@ -12,8 +13,7 @@ class SigmieEngine extends Engine
 {
     public function __construct(
         protected Client $sigmie
-    ) {
-    }
+    ) {}
 
     public function deleteAllIndexes()
     {
@@ -28,8 +28,17 @@ class SigmieEngine extends Engine
 
     public function lazyMap(Builder $builder, $results, $model)
     {
-        $ids = array_map(fn ($hit) => $hit['_id'], $results['hits']);
-        $hits = collect($results['hits'])->mapWithKeys(fn ($hit) => [$hit['_id'] => $hit]);
+        $hits = dot($results)->get('hits.hits');
+
+        $ids = collect($hits)->pluck('_id')->values()->all();
+
+        $hits = collect($hits)->mapWithKeys(fn($hit) => [$hit['_id'] => $hit]);
+
+        if (count($hits) === 0) {
+            return LazyCollection::make($model->newCollection());
+        }
+
+        $idsOrder = array_flip($ids);
 
         $models = $model->whereIn('id', $ids)
             ->get()
@@ -39,7 +48,8 @@ class SigmieEngine extends Engine
                 $model->hit($hit);
 
                 return  $model;
-            })->sortByDesc(fn ($model) => (float) $model->hit['_score'])
+            })
+            ->sortBy(fn($model) => $idsOrder[$model->getScoutKey()])
             ->values();
 
         return  $models;
@@ -81,11 +91,21 @@ class SigmieEngine extends Engine
     {
         $indexName = config('scout.prefix') . $models->first()->indexName();
 
-        $batch = $models->map(fn ($model) => [
-            'action' => 'upsert',
-            '_id' => $model->searchableId(),
-            'body' => $model->toSearchableArray(),
-        ])
+        $batch = $models->map(function ($model) {
+            $body = $model->toSearchableArray();
+
+            foreach ($body as $key => $value) {
+                if ($value instanceof \DateTime || $value instanceof \Carbon\Carbon) {
+                    $body[$key] = $value->format('Y-m-d\TH:i:s.u\Z');
+                }
+            }
+
+            return [
+                'action' => 'upsert',
+                '_id' => $model->searchableId(),
+                'body' => $body,
+            ];
+        })
             ->values()
             ->toArray();
 
@@ -100,7 +120,7 @@ class SigmieEngine extends Engine
     {
         $indexName = config('scout.prefix') . $models->first()->indexName();
 
-        $batch = $models->map(fn ($model) => [
+        $batch = $models->map(fn($model) => [
             'action' => 'delete',
             '_id' => $model->searchableId(),
         ])->toArray();
@@ -165,26 +185,37 @@ class SigmieEngine extends Engine
 
     public function mapIds($results)
     {
-        $ids = array_map(fn ($hit) => $hit['_id'], $results['hits']);
+        $ids = array_map(fn($hit) => $hit['_id'], $results['hits']);
 
         return collect($ids);
     }
 
     public function map(Builder $builder, $results, $model)
     {
-        $ids = array_map(fn ($hit) => $hit['_id'], $results['hits']);
-        $hits = collect($results['hits'])->mapWithKeys(fn ($hit) => [$hit['_id'] => $hit]);
+        $hits = dot($results)->get('hits.hits');
+
+        $ids = collect($hits)->pluck('_id')->values()->all();
+
+        $hits = collect($hits)->mapWithKeys(fn($hit) => [$hit['_id'] => $hit]);
+
+        if (count($hits) === 0) {
+            return $model->newCollection();
+        }
+
+        $idsOrder = array_flip($ids);
 
         $models = $model->whereIn('id', $ids)
             ->get()
             ->map(function ($model) use ($hits) {
+
                 $hit = $hits[$model->searchableId()];
 
-                $model->hit($hit);
+                $model->withScoutMetadata('_score', (float) $hit['_score']);
+                $model->withScoutMetadata('_id', $hit['_id']);
 
                 return  $model;
             })
-            ->sortByDesc(fn ($model) => (float) $model->hit['_score'])
+            ->sortBy(fn($model) => $idsOrder[$model->getScoutKey()])
             ->values();
 
         return  $models;

@@ -46,22 +46,4 @@ trait Searchable
             'mappings' => $mappings,
         ];
     }
-
-    public function toSearchableArray()
-    {
-        $array = $this->toArray();
-
-        foreach ($array as $key => $value) {
-            if ($value instanceof Carbon || $value instanceof DateTime) {
-                $array[$key] = $value->format('Y-m-d\TH:i:s.u\Z');
-            }
-        }
-
-        return $array;
-    }
-
-    public function hit(array $hit)
-    {
-        $this->hit = $hit;
-    }
 }
