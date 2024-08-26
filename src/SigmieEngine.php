@@ -94,6 +94,10 @@ class SigmieEngine extends Engine
         $batch = $models->map(function ($model) {
             $body = $model->toSearchableArray();
 
+            if (count($body) === 0) {
+                return null;
+            }
+
             foreach ($body as $key => $value) {
                 if ($value instanceof \DateTime || $value instanceof \Carbon\Carbon) {
                     $body[$key] = $value->format('Y-m-d\TH:i:s.u\Z');
@@ -106,6 +110,7 @@ class SigmieEngine extends Engine
                 'body' => $body,
             ];
         })
+            ->filter()
             ->values()
             ->toArray();
 
